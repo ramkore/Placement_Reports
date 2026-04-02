@@ -463,11 +463,14 @@
                     </tr>`;
                 });
 
-                const failedStudents = appeared.filter(st => st.semData.subjects.some(sub => sub.failed));
+                const listedKeys = new Set(subjectList.map(sub => sub.code || sub.name));
                 const failCountMap = {};
                 let maxFailSubs = 0;
-                for (const st of failedStudents) {
-                    const n = st.semData.subjects.filter(sub => sub.failed).length;
+                for (const st of appeared) {
+                    const n = st.semData.subjects.filter(sub =>
+                        sub.failed && listedKeys.has(sub.code || sub.name)
+                    ).length;
+                    if (n === 0) continue;
                     failCountMap[n] = (failCountMap[n] || 0) + 1;
                     if (n > maxFailSubs) maxFailSubs = n;
                 }
@@ -609,11 +612,14 @@
                     </tr>`;
                 });
 
-                const failedStudents = appeared.filter(st => st.semData.subjects.some(sub => sub.failed));
+                const listedKeysW = new Set(subjectList.map(sub => sub.code || sub.name));
                 const failCountMap = {};
                 let maxFailSubs = 0;
-                for (const st of failedStudents) {
-                    const n = st.semData.subjects.filter(sub => sub.failed).length;
+                for (const st of appeared) {
+                    const n = st.semData.subjects.filter(sub =>
+                        sub.failed && listedKeysW.has(sub.code || sub.name)
+                    ).length;
+                    if (n === 0) continue;
                     failCountMap[n] = (failCountMap[n] || 0) + 1;
                     if (n > maxFailSubs) maxFailSubs = n;
                 }
@@ -747,12 +753,15 @@ body { font-family:'Times New Roman',Times,serif; font-size:12pt; color:#000; }
                 });
                 sheetsHtml += `</table><br/>`;
 
-                // Failure distribution
-                const failedStudents = appeared.filter(st => st.semData.subjects.some(sub => sub.failed));
+                // Failure distribution — only count failures for listed subjects
+                const listedKeysX = new Set(subjectList.map(sub => sub.code || sub.name));
                 const failCountMap = {};
                 let maxFailSubs = 0;
-                for (const st of failedStudents) {
-                    const n = st.semData.subjects.filter(sub => sub.failed).length;
+                for (const st of appeared) {
+                    const n = st.semData.subjects.filter(sub =>
+                        sub.failed && listedKeysX.has(sub.code || sub.name)
+                    ).length;
+                    if (n === 0) continue;
                     failCountMap[n] = (failCountMap[n] || 0) + 1;
                     if (n > maxFailSubs) maxFailSubs = n;
                 }
