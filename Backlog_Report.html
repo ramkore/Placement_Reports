@@ -968,10 +968,8 @@
                 let secCount = 0;
                 secStudents.forEach((st) => {
                     const isLateral = st.lateral;
-                    let hasAnyBacklog = false;
-                    for (let sem = 1; sem <= maxSem; sem++) {
-                        if (st.sem[sem]?.b && st.sem[sem].b !== '0') { hasAnyBacklog = true; break; }
-                    }
+                    // Cleared only if ALL active sems have b==='0'; missing data = not cleared
+                    const hasAnyBacklog = activeSems.some(sem => { const b = st.sem[sem]?.b; return !b || b !== '0'; });
                     if (filterMode === 'backlogs' && !hasAnyBacklog) return;
                     if (filterMode === 'cleared' && hasAnyBacklog) return;
 
@@ -1028,28 +1026,27 @@
 
         function updateDashboard() {
             const maxSem = getMaxSem();
+            const activeSems = [];
+            for (let sem = 1; sem <= maxSem; sem++) {
+                if (currentStudents.some(st => st.sem[sem] && (st.sem[sem].b || st.sem[sem].s))) activeSems.push(sem);
+            }
+            if (activeSems.length === 0) activeSems.push(1);
             let withBacklogs = 0;
             let allClear = 0;
             const semBacklogCount = {};
             for (let i = 1; i <= maxSem; i++) semBacklogCount[i] = 0;
 
             const displayedStudents = filterMode === 'all' ? currentStudents : currentStudents.filter(st => {
-                let hasAny = false;
-                for (let sem = 1; sem <= maxSem; sem++) {
-                    if (st.sem[sem]?.b && st.sem[sem].b !== '0') { hasAny = true; break; }
-                }
+                const hasAny = activeSems.some(sem => { const b = st.sem[sem]?.b; return !b || b !== '0'; });
                 return filterMode === 'backlogs' ? hasAny : !hasAny;
             });
 
             const sectionStats = {};
             displayedStudents.forEach(st => {
-                let hasAny = false;
+                const hasAny = activeSems.some(sem => { const b = st.sem[sem]?.b; return !b || b !== '0'; });
                 for (let sem = 1; sem <= maxSem; sem++) {
                     const b = st.sem[sem]?.b;
-                    if (b && b !== '0') {
-                        hasAny = true;
-                        semBacklogCount[sem]++;
-                    }
+                    if (b && b !== '0') semBacklogCount[sem]++;
                 }
                 if (hasAny) withBacklogs++; else allClear++;
 
@@ -1078,13 +1075,6 @@
             }
 
             const semLabels = { 1: 'I-I', 2: 'I-II', 3: 'II-I', 4: 'II-II', 5: 'III-I', 6: 'III-II', 7: 'IV-I', 8: 'IV-II' };
-
-            const activeSems = [];
-            for (let sem = 1; sem <= maxSem; sem++) {
-                if (currentStudents.some(st => st.sem[sem] && (st.sem[sem].b || st.sem[sem].s))) {
-                    activeSems.push(sem);
-                }
-            }
 
             activeSems.forEach(sem => {
                 dashHtml += `<div class="stat-card"><div class="stat-value">${semBacklogCount[sem]}</div><div class="stat-label">${semLabels[sem]} Backlogs</div></div>`;
