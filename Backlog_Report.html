@@ -1145,11 +1145,18 @@
 
                         // ── Try JNTUH API first (has more semesters including 4-1) ──
                         try {
-                            const resp = await fetch(`${JNTUH_API}?rollNumber=${st.roll}`, {
-                                signal: controller.signal
-                            });
-                            if (resp.ok) {
-                                const data = await resp.json();
+                            let data = null;
+                            for (let attempt = 0; attempt < 3; attempt++) {
+                                const resp = await fetch(`${JNTUH_API}?rollNumber=${st.roll}`, { signal: controller.signal });
+                                if (!resp.ok) break;
+                                const json = await resp.json();
+                                if (json?.message?.toLowerCase().includes('queued')) {
+                                    await new Promise(r => setTimeout(r, 2000 * (attempt + 1)));
+                                    continue;
+                                }
+                                data = json; break;
+                            }
+                            if (data) {
                                 if (data?.details?.name && (st.name === "Fetching..." || !st.name)) {
                                     st.name = data.details.name;
                                 }
@@ -1193,7 +1200,7 @@
                                     });
                                     if (data.cgpa) st.cgpa = data.cgpa;
                                 }
-                            }
+                            } // end if (data)
                         } catch (jntuhErr) {
                             if (jntuhErr.name === 'AbortError') throw jntuhErr;
                             // JNTUH failed, will try CampX below

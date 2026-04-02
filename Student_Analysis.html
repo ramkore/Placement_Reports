@@ -91,8 +91,8 @@
                 <option value="04">ECE (04)</option>
                 <option value="05" selected>CSE (05)</option>
                 <option value="62">CSE (CS) (62)</option>
-                <option value="67">CSE (AI &amp; ML) (67)</option>
-                <option value="74">CSE (DS) (74)</option>
+                <option value="67">CSE (AI&ML) / CSE (DS) (67)</option>
+                <option value="74">CSE (DS) 23+ batch (74)</option>
             </select>
         </div>
         <div class="field">
@@ -242,9 +242,18 @@
 
                     // Try JNTUH API first
                     try {
-                        const resp = await fetch(`${JNTUH_API}?rollNumber=${roll}`, { signal: controller.signal });
-                        if (resp.ok) {
-                            const data = await resp.json();
+                        let data = null;
+                        for (let attempt = 0; attempt < 3; attempt++) {
+                            const resp = await fetch(`${JNTUH_API}?rollNumber=${roll}`, { signal: controller.signal });
+                            if (!resp.ok) break;
+                            const json = await resp.json();
+                            if (json?.message?.toLowerCase().includes('queued')) {
+                                await new Promise(r => setTimeout(r, 2000 * (attempt + 1)));
+                                continue;
+                            }
+                            data = json; break;
+                        }
+                        if (data) {
                             if (data?.details?.name) name = data.details.name;
                             if (data?.results?.semesters) {
                                 const semResult = data.results.semesters.find(s => s.semester === semKey);
@@ -258,6 +267,7 @@
                                 }
                             }
                         }
+                        } // end if (data)
                     } catch (jntuhErr) {
                         if (jntuhErr.name === 'AbortError') throw jntuhErr;
                     }

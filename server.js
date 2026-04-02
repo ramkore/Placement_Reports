@@ -68,7 +68,10 @@ async function proxyFetch(apiPath, queryParams = {}) {
         }
 
         const data = await resp.json();
-        setCache(cacheKey, data);
+        // Don't cache queued/pending responses — they have no real data yet
+        if (!data?.message?.toLowerCase().includes('queued')) {
+            setCache(cacheKey, data);
+        }
         return { data, fromCache: false };
     } catch (err) {
         clearTimeout(timeoutId);
