@@ -92,7 +92,7 @@
                 <option value="05" selected>CSE (05)</option>
                 <option value="62">CSE (CS) (62)</option>
                 <option value="66">CSE (AI&ML) (66)</option>
-                <option value="67">CSE (DS) (67)</option>
+                <option value="67">CSE (DS) 22-batch (67)</option>
                 <option value="74">CSE (DS) 23+ batch (74)</option>
             </select>
         </div>
@@ -297,7 +297,7 @@
                     }
 
                     clearTimeout(timeoutId);
-                    if (!name) return null;
+                    if (!name) name = roll; // fallback if API didn't return a name
                     return { roll, name: name.toUpperCase(), section: getSection(roll), semData };
                 } catch (e) {
                     clearTimeout(timeoutId);
