@@ -1151,10 +1151,7 @@
                                 const resp = await fetch(`${JNTUH_API}?rollNumber=${st.roll}`, { signal: controller.signal });
                                 if (!resp.ok) break;
                                 const json = await resp.json();
-                                if (json?.message?.toLowerCase().includes('queued')) {
-                                    await new Promise(r => setTimeout(r, 2000 * (attempt + 1)));
-                                    continue;
-                                }
+                                if (json?.message?.toLowerCase().includes('queued')) break; // no data yet, try CampX
                                 data = json; break;
                             }
                             if (data) {
