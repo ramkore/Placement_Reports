@@ -232,115 +232,100 @@
             const BATCH_SIZE = 20;
             let fetched = 0;
 
+            // ── Single-roll fetch (reused for first pass + retry) ──────────
+            async function fetchOneRoll(roll, timeoutMs) {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+                try {
+                    let name = '';
+                    let semData = null;
+
+                    // Try JNTUH API first
+                    try {
+                        const resp = await fetch(`${JNTUH_API}?rollNumber=${roll}`, { signal: controller.signal });
+                        if (resp.ok) {
+                            const data = await resp.json();
+                            if (data?.details?.name) name = data.details.name;
+                            if (data?.results?.semesters) {
+                                const semResult = data.results.semesters.find(s => s.semester === semKey);
+                                if (semResult && semResult.subjects) {
+                                    const subjects = semResult.subjects.map(sub => {
+                                        const grade = sub.grades || '';
+                                        const failed = grade === 'F' || grade === 'Ab' || grade === '-' || grade === '';
+                                        return { code: sub.subjectCode || '', name: sub.subjectName || '', grade, credits: sub.credits?.toString() || '', failed };
+                                    });
+                                    semData = { subjects, sgpa: (semResult.semesterSGPA || '').toString(), backlogs: subjects.filter(s => s.failed).length };
+                                }
+                            }
+                        }
+                    } catch (jntuhErr) {
+                        if (jntuhErr.name === 'AbortError') throw jntuhErr;
+                    }
+
+                    // Fallback to CampX if JNTUH had no semester data
+                    if (!semData) {
+                        for (const examType of ['general', 'supplementary']) {
+                            try {
+                                const resp = await fetch(`${CAMPX_API}?examType=${examType}&rollNo=${roll}`, { headers: CAMPX_HEADERS, signal: controller.signal });
+                                if (!resp.ok) continue;
+                                const data = await resp.json();
+                                if (!data?.student) continue;
+                                if (!name && data.student.fullName) name = data.student.fullName;
+                                if (data.results) {
+                                    const semResult = data.results.find(s => Number(s.semNo) === semNum);
+                                    if (semResult?.subjectsResults) {
+                                        const subjects = semResult.subjectsResults.map(sub => {
+                                            const g = sub.consideredGrade || {};
+                                            const grade = g.grade || g.gradeName || (g.passed === false ? 'F' : 'P');
+                                            return { code: sub.subject?.subjectCode || '', name: sub.subject?.name || '', grade, credits: sub.subject?.credits || '', failed: !g.passed };
+                                        });
+                                        const nd = { subjects, sgpa: (semResult.sgpa || '').toString(), backlogs: subjects.filter(s => s.failed).length };
+                                        if (!semData || nd.backlogs < semData.backlogs) semData = nd;
+                                    }
+                                }
+                            } catch (inner) {
+                                if (inner.name === 'AbortError') throw inner;
+                            }
+                        }
+                    }
+
+                    clearTimeout(timeoutId);
+                    if (!name) return null;
+                    return { roll, name: name.toUpperCase(), section: getSection(roll), semData };
+                } catch (e) {
+                    clearTimeout(timeoutId);
+                    return null; // timed out or network error
+                }
+            }
+
+            // ── First pass (8s timeout per roll) ──────────────────────────
+            const failedRolls = [];
             for (let i = 0; i < allRolls.length; i += BATCH_SIZE) {
                 const batch = allRolls.slice(i, i + BATCH_SIZE);
-
-                const promises = batch.map(async (roll) => {
-                    const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 8000);
-                    try {
-                        let name = '';
-                        let semData = null;
-
-                        // ── Try JNTUH API first (has more semesters) ──
-                        try {
-                            const resp = await fetch(`${JNTUH_API}?rollNumber=${roll}`, {
-                                signal: controller.signal
-                            });
-                            if (resp.ok) {
-                                const data = await resp.json();
-                                if (data?.details?.name) {
-                                    name = data.details.name;
-                                }
-                                if (data?.results?.semesters) {
-                                    const semResult = data.results.semesters.find(s => s.semester === semKey);
-                                    if (semResult && semResult.subjects) {
-                                        const subjects = semResult.subjects.map(sub => {
-                                            const grade = sub.grades || '';
-                                            const failed = grade === 'F' || grade === 'Ab' || grade === '-' || grade === '';
-                                            return {
-                                                code: sub.subjectCode || '',
-                                                name: sub.subjectName || '',
-                                                grade: sub.grades || '',
-                                                credits: sub.credits?.toString() || '',
-                                                failed
-                                            };
-                                        });
-                                        semData = {
-                                            subjects,
-                                            sgpa: (semResult.semesterSGPA || '').toString(),
-                                            backlogs: subjects.filter(s => s.failed).length
-                                        };
-                                    }
-                                }
-                            }
-                        } catch (jntuhErr) {
-                            if (jntuhErr.name === 'AbortError') throw jntuhErr;
-                        }
-
-                        // ── Fallback to CampX API if JNTUH had no semester data ──
-                        if (!semData) {
-                            const examTypes = ['general', 'supplementary'];
-                            for (const examType of examTypes) {
-                                try {
-                                    const resp = await fetch(`${CAMPX_API}?examType=${examType}&rollNo=${roll}`, {
-                                        headers: CAMPX_HEADERS,
-                                        signal: controller.signal
-                                    });
-                                    if (!resp.ok) continue;
-                                    const data = await resp.json();
-                                    if (!data || !data.student) continue;
-
-                                    if (!name && data.student.fullName) {
-                                        name = data.student.fullName;
-                                    }
-
-                                    if (data.results) {
-                                        const semResult = data.results.find(s => Number(s.semNo) === semNum);
-                                        if (semResult && semResult.subjectsResults) {
-                                            const subjects = semResult.subjectsResults.map(sub => {
-                                                const g = sub.consideredGrade || {};
-                                                const grade = g.grade || g.gradeName || (g.passed === false ? 'F' : 'P');
-                                                return {
-                                                    code: sub.subject?.subjectCode || '',
-                                                    name: sub.subject?.name || '',
-                                                    grade,
-                                                    credits: sub.subject?.credits || '',
-                                                    failed: !g.passed
-                                                };
-                                            });
-                                            const newSemData = {
-                                                subjects,
-                                                sgpa: (semResult.sgpa || '').toString(),
-                                                backlogs: subjects.filter(s => s.failed).length
-                                            };
-                                            if (!semData || newSemData.backlogs < semData.backlogs) {
-                                                semData = newSemData;
-                                            }
-                                        }
-                                    }
-                                } catch (inner) {
-                                    if (inner.name === 'AbortError') throw inner;
-                                }
-                            }
-                        }
-
-                        clearTimeout(timeoutId);
-                        if (!name) return;
-
-                        allStudentData.push({ roll, name: name.toUpperCase(), section: getSection(roll), semData });
-                    } catch (e) {
-                        // Skip failed/timed-out fetches
-                    }
+                const results = await Promise.all(batch.map(roll => fetchOneRoll(roll, 8000)));
+                results.forEach((res, idx) => {
+                    if (res) { allStudentData.push(res); }
+                    else { failedRolls.push(batch[idx]); }
                 });
-
-                await Promise.all(promises);
                 fetched += batch.length;
-                const pct = Math.min(100, (fetched / allRolls.length) * 100);
+                const pct = Math.min(90, (fetched / allRolls.length) * 90);
                 progBar.style.width = pct + '%';
-                progText.textContent = `Fetched ${fetched} / ${allRolls.length} roll numbers...`;
+                progText.textContent = `Fetching... ${fetched} / ${allRolls.length}`;
+            }
 
-
+            // ── Retry pass (15s timeout, sequential to avoid overload) ────
+            if (failedRolls.length > 0) {
+                progText.textContent = `Retrying ${failedRolls.length} timed-out roll numbers...`;
+                progText.style.color = '#e65100';
+                const RETRY_BATCH = 10;
+                for (let i = 0; i < failedRolls.length; i += RETRY_BATCH) {
+                    const batch = failedRolls.slice(i, i + RETRY_BATCH);
+                    const results = await Promise.all(batch.map(roll => fetchOneRoll(roll, 15000)));
+                    results.forEach(res => { if (res) allStudentData.push(res); });
+                    const pct = 90 + Math.min(10, ((i + RETRY_BATCH) / failedRolls.length) * 10);
+                    progBar.style.width = pct + '%';
+                }
+                progText.style.color = '';
             }
 
             progBar.style.width = '100%';
@@ -349,7 +334,8 @@
                 progText.textContent = `Found ${allStudentData.length} students but none have Semester ${semNum} results. Results may not be published yet for this semester.`;
                 progText.style.color = '#d32f2f';
             } else {
-                progText.textContent = `Done! ${allStudentData.length} students found (${withSemData} with semester results).`;
+                const retryNote = failedRolls.length > 0 ? ` (${failedRolls.length} retried)` : '';
+                progText.textContent = `Done! ${allStudentData.length} students found (${withSemData} with semester results)${retryNote}.`;
                 progText.style.color = '';
             }
             btn.disabled = false;
