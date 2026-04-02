@@ -968,8 +968,9 @@
                 let secCount = 0;
                 secStudents.forEach((st) => {
                     const isLateral = st.lateral;
-                    // Cleared only if ALL active sems have b==='0'; missing data = not cleared
-                    const hasAnyBacklog = activeSems.some(sem => { const b = st.sem[sem]?.b; return !b || b !== '0'; });
+                    const leMinSem = st.lateral ? 3 : 1;
+                    // Cleared only if ALL applicable sems have b==='0'; missing data = not cleared
+                    const hasAnyBacklog = activeSems.some(sem => { if (sem < leMinSem) return false; const b = st.sem[sem]?.b; return !b || b !== '0'; });
                     if (filterMode === 'backlogs' && !hasAnyBacklog) return;
                     if (filterMode === 'cleared' && hasAnyBacklog) return;
 
@@ -1005,9 +1006,11 @@
                     });
 
                     // Total backlogs count (only up to selected semester)
+                    // LE students join from Sem 3 — Sems 1 & 2 are not applicable for them
+                    const leMinSem = st.lateral ? 3 : 1;
                     let totalBacklogs = 0;
                     let hasMissingSem = false;
-                    for (let sem = 1; sem <= maxSem; sem++) {
+                    for (let sem = leMinSem; sem <= maxSem; sem++) {
                         if (!activeSems.includes(sem)) continue;
                         const b = st.sem[sem]?.b;
                         if (!b) { hasMissingSem = true; }
@@ -1040,13 +1043,15 @@
             for (let i = 1; i <= maxSem; i++) semBacklogCount[i] = 0;
 
             const displayedStudents = filterMode === 'all' ? currentStudents : currentStudents.filter(st => {
-                const hasAny = activeSems.some(sem => { const b = st.sem[sem]?.b; return !b || b !== '0'; });
+                const leMinSem = st.lateral ? 3 : 1;
+                const hasAny = activeSems.some(sem => { if (sem < leMinSem) return false; const b = st.sem[sem]?.b; return !b || b !== '0'; });
                 return filterMode === 'backlogs' ? hasAny : !hasAny;
             });
 
             const sectionStats = {};
             displayedStudents.forEach(st => {
-                const hasAny = activeSems.some(sem => { const b = st.sem[sem]?.b; return !b || b !== '0'; });
+                const leMinSem = st.lateral ? 3 : 1;
+                const hasAny = activeSems.some(sem => { if (sem < leMinSem) return false; const b = st.sem[sem]?.b; return !b || b !== '0'; });
                 for (let sem = 1; sem <= maxSem; sem++) {
                     const b = st.sem[sem]?.b;
                     if (b && b !== '0') semBacklogCount[sem]++;
