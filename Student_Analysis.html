@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Result Analysis Report</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: 'Times New Roman', Times, serif; background: #f0f2f5; color: #000; }
+
+        .controls {
+            background: #fff; padding: 18px 24px; margin: 16px auto; max-width: 1100px;
+            border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-end;
+        }
+        .controls .field { display: flex; flex-direction: column; gap: 4px; }
+        .controls label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #666; letter-spacing: 0.5px; font-family: Arial, sans-serif; }
+        .controls input, .controls select { padding: 8px 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 13px; font-family: Arial, sans-serif; }
+        .controls input:focus, .controls select:focus { outline: none; border-color: #1a237e; box-shadow: 0 0 0 2px rgba(26,35,126,0.12); }
+        .controls button { padding: 9px 18px; border: none; border-radius: 5px; font-size: 13px; font-weight: 600; cursor: pointer; color: #fff; font-family: Arial, sans-serif; transition: background 0.2s; }
+        .btn-fetch { background: #1a237e; } .btn-fetch:hover { background: #3949ab; }
+        .btn-print { background: #2e7d32; } .btn-print:hover { background: #388e3c; }
+        .btn-word  { background: #2b579a; } .btn-word:hover  { background: #3a6db5; }
+        .btn-excel { background: #217346; } .btn-excel:hover { background: #2a9361; }
+        .btn-fetch:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .progress-area { max-width: 1100px; margin: 0 auto 10px; padding: 0 16px; font-family: Arial, sans-serif; }
+        .progress-bar-bg { background: #e0e0e0; border-radius: 6px; height: 7px; overflow: hidden; }
+        .progress-bar-fill { height: 100%; background: linear-gradient(90deg, #1a237e, #ff6f00); width: 0%; transition: width 0.4s; }
+        .progress-text { text-align: center; font-size: 12px; color: #888; margin-top: 4px; }
+
+        .faculty-editor { background: #fff; padding: 18px 24px; margin: 10px auto; max-width: 1100px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); display: none; font-family: Arial, sans-serif; }
+        .faculty-editor h3 { font-size: 14px; margin-bottom: 10px; color: #333; }
+        .faculty-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .faculty-table th { background: #f5f5f5; padding: 8px; text-align: left; border: 1px solid #ddd; }
+        .faculty-table td { padding: 6px 8px; border: 1px solid #ddd; }
+        .faculty-table input { width: 100%; padding: 5px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; }
+
+        .report-page { background: #fff; max-width: 1100px; margin: 20px auto; padding: 40px 50px; box-shadow: 0 2px 20px rgba(0,0,0,0.12); min-height: 800px; display: none; }
+        .college-header-img { width: 100%; max-height: 120px; object-fit: contain; margin-bottom: 10px; }
+        .report-header { text-align: center; margin-bottom: 14px; }
+        .report-header h2 { font-size: 16px; text-decoration: underline; margin-bottom: 2px; }
+        .report-header h3 { font-size: 14px; text-decoration: underline; margin-bottom: 6px; }
+        .report-header .date-line { text-align: right; font-size: 13px; margin-bottom: 10px; }
+        .summary-stats { font-size: 13px; margin-bottom: 16px; line-height: 1.7; }
+        .summary-stats b { text-transform: uppercase; }
+        .section-title { font-size: 14px; font-weight: bold; text-decoration: underline; margin: 18px 0 8px; }
+
+        .pass-section-header { font-size: 13px; font-weight: bold; text-align: center; margin-bottom: 6px; background: #fce4b2; padding: 4px; border: 1px solid #bbb; }
+        .pass-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        .pass-table th { background: #fce4b2; padding: 5px 6px; border: 1px solid #999; font-weight: bold; text-align: center; font-size: 11px; }
+        .pass-table td { padding: 3px 6px; border: 1px solid #999; font-size: 11px; }
+        .pass-table td:first-child { text-align: center; width: 35px; }
+        .pass-table .roll-col { width: 100px; font-weight: 600; }
+
+        .subject-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 20px; }
+        .subject-table th { background: #4a90d9; color: #fff; padding: 7px 8px; border: 1px solid #357abd; text-align: center; font-size: 11px; font-weight: bold; }
+        .subject-table td { padding: 6px 8px; border: 1px solid #999; text-align: center; }
+        .subject-table tbody tr:nth-child(odd) { background: #e8f4fd; }
+        .subject-table tbody tr:nth-child(even) { background: #fff; }
+        .subject-table td:nth-child(2), .subject-table td:nth-child(3) { text-align: left; }
+        .pass-pct-cell { font-weight: bold; }
+
+        .failure-dist-table { border-collapse: collapse; font-size: 12px; margin-top: 14px; }
+        .failure-dist-table th { background: #fce4b2; padding: 6px 14px; border: 1px solid #999; font-weight: bold; text-align: center; }
+        .failure-dist-table td { padding: 6px 14px; border: 1px solid #999; text-align: center; font-weight: 600; }
+
+        .spinner-inline { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(0,0,0,0.15); border-radius: 50%; border-top-color: #1a237e; animation: spin 0.8s ease infinite; vertical-align: middle; margin-left: 6px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @media print {
+            .controls, .progress-area, .faculty-editor { display: none !important; }
+            body { background: #fff; padding: 0; margin: 0; }
+            .report-page { box-shadow: none; margin: 0; padding: 30px 40px; max-width: none; page-break-after: always; }
+            .pass-table, .subject-table, .failure-dist-table { page-break-inside: avoid; }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="controls">
+        <div class="field"><label>Year</label><input type="text" id="batchYear" value="23" style="width:50px;text-align:center;" /></div>
+        <div class="field"><label>Code</label><input type="text" id="collegeCode" value="6F" style="width:50px;text-align:center;" /></div>
+        <div class="field">
+            <label>Branch</label>
+            <select id="branchSelect" style="width:160px;">
+                <option value="01">CIVIL (01)</option>
+                <option value="02">EEE (02)</option>
+                <option value="04">ECE (04)</option>
+                <option value="05" selected>CSE (05)</option>
+                <option value="62">CSE (CS) (62)</option>
+                <option value="67">CSE (AI &amp; ML) (67)</option>
+                <option value="74">CSE (DS) (74)</option>
+            </select>
+        </div>
+        <div class="field">
+            <label>Semester</label>
+            <select id="semesterSelect" style="width:130px;">
+                <option value="1-1">I-I (Sem 1)</option>
+                <option value="1-2">I-II (Sem 2)</option>
+                <option value="2-1">II-I (Sem 3)</option>
+                <option value="2-2">II-II (Sem 4)</option>
+                <option value="3-1" selected>III-I (Sem 5)</option>
+                <option value="3-2">III-II (Sem 6)</option>
+                <option value="4-1">IV-I (Sem 7)</option>
+                <option value="4-2">IV-II (Sem 8)</option>
+            </select>
+        </div>
+        <div class="field"><label>Reg End</label><input type="text" id="regEnd" value="C8" style="width:55px;text-align:center;" /></div>
+        <div class="field"><label>LE End</label><input type="text" id="leEnd" value="12" style="width:55px;text-align:center;" /></div>
+        <div class="field"><label>Sections</label><input type="number" id="sectionCount" value="2" min="1" max="5" style="width:55px;text-align:center;" /></div>
+        <div class="field"><label>Sec-A Ends</label><input type="text" id="secASuffix" value="60" style="width:55px;text-align:center;" title="Last 2-char suffix for Section A regular students" /></div>
+        <div class="field"><label>LE Sec-A Ends</label><input type="text" id="leSecASuffix" value="06" style="width:55px;text-align:center;" title="Last 2-char suffix for Section A LE students" /></div>
+        <div class="field"><label>Date</label><input type="date" id="reportDate" style="width:140px;" /></div>
+        <button class="btn-fetch" id="fetchBtn" onclick="startAnalysis()">📊 Generate Report</button>
+        <button class="btn-print" onclick="window.print()" style="display:none;" id="printBtn">🖨️ Print / PDF</button>
+        <button class="btn-word" onclick="exportToWord()" style="display:none;" id="wordBtn">📄 Export Word</button>
+        <button class="btn-excel" onclick="exportToExcel()" style="display:none;" id="excelBtn">📊 Export Excel</button>
+    </div>
+
+    <div class="progress-area" id="progressArea" style="display:none;">
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressBar"></div></div>
+        <div class="progress-text" id="progressText"></div>
+    </div>
+
+    <div class="faculty-editor" id="facultyEditor">
+        <h3>📝 Subject &amp; Faculty Details (edit before printing)</h3>
+        <table class="faculty-table">
+            <thead><tr><th style="width:40px;">S.No</th><th>Subject Name</th><th>Subject Code</th><th style="width:220px;">Faculty Name</th></tr></thead>
+            <tbody id="facultyBody"></tbody>
+        </table>
+        <div style="margin-top:10px;text-align:right;">
+            <button class="btn-fetch" onclick="regenerateReport()" style="background:#ff6f00;">🔄 Refresh Report</button>
+        </div>
+    </div>
+
+    <div id="reportContainer"></div>
+
+    <script>
+        const CAMPX_API = 'https://api.campx.in/exams/student-results/external';
+        const CAMPX_HEADERS = { 'x-institution-code': 'pec', 'x-tenant-id': 'pec', 'x-api-version': '2' };
+        const JNTUH_API = '/api/getAcademicResult'; // proxied through server.js
+        const SEM_KEY_TO_NUM = { '1-1': 1, '1-2': 2, '2-1': 3, '2-2': 4, '3-1': 5, '3-2': 6, '4-1': 7, '4-2': 8 };
+        const SEM_LABELS = {
+            '1-1': 'I-YEAR-I SEMESTER', '1-2': 'I-YEAR-II SEMESTER',
+            '2-1': 'II-YEAR-I SEMESTER', '2-2': 'II-YEAR-II SEMESTER',
+            '3-1': 'III-YEAR-I SEMESTER', '3-2': 'III-YEAR-II SEMESTER',
+            '4-1': 'IV-YEAR-I SEMESTER', '4-2': 'IV-YEAR-II SEMESTER'
+        };
+        const BRANCH_NAMES = {
+            '01': 'CIVIL', '02': 'EEE', '04': 'ECE', '05': 'CSE',
+            '62': 'CSE (CS)', '67': 'CSE (AI & ML)', '74': 'CSE (DS)'
+        };
+        const FAIL_GRADES = new Set(['F', 'Ab', '-', '']);
+
+        document.getElementById('reportDate').valueAsDate = new Date();
+
+        // Build ordered suffix list: 00-99, A0-Z9
+        function buildSuffixList() {
+            const list = [];
+            for (let i = 0; i <= 9; i++)
+                for (let j = 0; j <= 9; j++) list.push(i.toString() + j.toString());
+            for (const c of 'ABCDEFGHIJKLMNOPQRSTUVWXYZ')
+                for (let j = 0; j <= 9; j++) list.push(c + j.toString());
+            return list;
+        }
+        const SUFFIX_LIST = buildSuffixList();
+
+        function generateSequence(start, end) {
+            const s = start.toUpperCase(), e = end.toUpperCase();
+            if (s.length !== e.length || s.length < 2) return [s, e];
+            const prefix = s.substring(0, s.length - 2);
+            if (prefix !== e.substring(0, e.length - 2)) return [s, e];
+            const si = SUFFIX_LIST.indexOf(s.slice(-2)), ei = SUFFIX_LIST.indexOf(e.slice(-2));
+            if (si === -1 || ei === -1 || si > ei) return [s, e];
+            return SUFFIX_LIST.slice(si, ei + 1).map(suf => prefix + suf);
+        }
+
+        let allStudentData = [];
+        let subjectList = [];
+
+        async function startAnalysis() {
+            const year = document.getElementById('batchYear').value.trim();
+            const cCode = document.getElementById('collegeCode').value.trim().toUpperCase();
+            const branch = document.getElementById('branchSelect').value;
+            const semKey = document.getElementById('semesterSelect').value;
+            const regEnd = document.getElementById('regEnd').value.trim().toUpperCase();
+            const leEnd = document.getElementById('leEnd').value.trim().toUpperCase();
+            const secCount = parseInt(document.getElementById('sectionCount').value) || 2;
+            const secASuffix = document.getElementById('secASuffix').value.trim().toUpperCase();
+            const leSecASuffix = document.getElementById('leSecASuffix').value.trim().toUpperCase();
+
+            if (!year || !cCode || !branch || !regEnd) { alert('Fill in all required fields'); return; }
+
+            const regPrefix = `${year}${cCode}1A${branch}`;
+            const regRolls = generateSequence(`${regPrefix}01`, `${regPrefix}${regEnd}`);
+
+            let leRolls = [];
+            if (leEnd && leEnd !== '0' && leEnd !== '00') {
+                const leYear = (parseInt(year) + 1).toString().padStart(2, '0');
+                const lePrefix = `${leYear}${cCode}5A${branch}`;
+                leRolls = generateSequence(`${lePrefix}01`, `${lePrefix}${leEnd}`);
+            }
+
+            const allRolls = [...regRolls, ...leRolls];
+
+            function getSection(roll) {
+                if (secCount <= 1) return 'A';
+                const suffix = roll.slice(-2);
+                const isLE = roll.substring(4, 6) === '5A';
+                const splitEnd = isLE ? (leSecASuffix || '06') : (secASuffix || '60');
+                const idx = SUFFIX_LIST.indexOf(suffix);
+                const splitIdx = SUFFIX_LIST.indexOf(splitEnd);
+                if (splitIdx === -1 || idx === -1) return 'A';
+                return idx <= splitIdx ? 'A' : 'B';
+            }
+
+            const btn = document.getElementById('fetchBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-inline"></span> Fetching...';
+
+            const progArea = document.getElementById('progressArea');
+            const progBar = document.getElementById('progressBar');
+            const progText = document.getElementById('progressText');
+            progArea.style.display = 'block';
+            progBar.style.width = '0%';
+
+            allStudentData = [];
+            const semNum = SEM_KEY_TO_NUM[semKey];
+            const BATCH_SIZE = 5;
+            let fetched = 0;
+
+            for (let i = 0; i < allRolls.length; i += BATCH_SIZE) {
+                const batch = allRolls.slice(i, i + BATCH_SIZE);
+
+                const promises = batch.map(async (roll) => {
+                    const controller = new AbortController();
+                    const timeoutId = setTimeout(() => controller.abort(), 15000);
+                    try {
+                        let name = '';
+                        let semData = null;
+
+                        // ── Try JNTUH API first (has more semesters) ──
+                        try {
+                            const resp = await fetch(`${JNTUH_API}?rollNumber=${roll}`, {
+                                signal: controller.signal
+                            });
+                            if (resp.ok) {
+                                const data = await resp.json();
+                                if (data?.details?.name) {
+                                    name = data.details.name;
+                                }
+                                if (data?.results?.semesters) {
+                                    const semResult = data.results.semesters.find(s => s.semester === semKey);
+                                    if (semResult && semResult.subjects) {
+                                        const subjects = semResult.subjects.map(sub => {
+                                            const grade = sub.grades || '';
+                                            const failed = grade === 'F' || grade === 'Ab' || grade === '-' || grade === '';
+                                            return {
+                                                code: sub.subjectCode || '',
+                                                name: sub.subjectName || '',
+                                                grade: sub.grades || '',
+                                                credits: sub.credits?.toString() || '',
+                                                failed
+                                            };
+                                        });
+                                        semData = {
+                                            subjects,
+                                            sgpa: (semResult.semesterSGPA || '').toString(),
+                                            backlogs: subjects.filter(s => s.failed).length
+                                        };
+                                    }
+                                }
+                            }
+                        } catch (jntuhErr) {
+                            if (jntuhErr.name === 'AbortError') throw jntuhErr;
+                        }
+
+                        // ── Fallback to CampX API if JNTUH had no semester data ──
+                        if (!semData) {
+                            const examTypes = ['general', 'supplementary'];
+                            for (const examType of examTypes) {
+                                try {
+                                    const resp = await fetch(`${CAMPX_API}?examType=${examType}&rollNo=${roll}`, {
+                                        headers: CAMPX_HEADERS,
+                                        signal: controller.signal
+                                    });
+                                    if (!resp.ok) continue;
+                                    const data = await resp.json();
+                                    if (!data || !data.student) continue;
+
+                                    if (!name && data.student.fullName) {
+                                        name = data.student.fullName;
+                                    }
+
+                                    if (data.results) {
+                                        const semResult = data.results.find(s => Number(s.semNo) === semNum);
+                                        if (semResult && semResult.subjectsResults) {
+                                            const subjects = semResult.subjectsResults.map(sub => {
+                                                const g = sub.consideredGrade || {};
+                                                const grade = g.grade || g.gradeName || (g.passed === false ? 'F' : 'P');
+                                                return {
+                                                    code: sub.subject?.subjectCode || '',
+                                                    name: sub.subject?.name || '',
+                                                    grade,
+                                                    credits: sub.subject?.credits || '',
+                                                    failed: !g.passed
+                                                };
+                                            });
+                                            const newSemData = {
+                                                subjects,
+                                                sgpa: (semResult.sgpa || '').toString(),
+                                                backlogs: subjects.filter(s => s.failed).length
+                                            };
+                                            if (!semData || newSemData.backlogs < semData.backlogs) {
+                                                semData = newSemData;
+                                            }
+                                        }
+                                    }
+                                } catch (inner) {
+                                    if (inner.name === 'AbortError') throw inner;
+                                }
+                            }
+                        }
+
+                        clearTimeout(timeoutId);
+                        if (!name) return;
+
+                        allStudentData.push({ roll, name: name.toUpperCase(), section: getSection(roll), semData });
+                    } catch (e) {
+                        // Skip failed/timed-out fetches
+                    }
+                });
+
+                await Promise.all(promises);
+                fetched += batch.length;
+                const pct = Math.min(100, (fetched / allRolls.length) * 100);
+                progBar.style.width = pct + '%';
+                progText.textContent = `Fetched ${fetched} / ${allRolls.length} roll numbers...`;
+
+                if (i + BATCH_SIZE < allRolls.length) await new Promise(r => setTimeout(r, 150));
+            }
+
+            progBar.style.width = '100%';
+            const withSemData = allStudentData.filter(st => st.semData && st.semData.subjects.length > 0).length;
+            if (allStudentData.length > 0 && withSemData === 0) {
+                progText.textContent = `Found ${allStudentData.length} students but none have Semester ${semNum} results. Results may not be published yet for this semester.`;
+                progText.style.color = '#d32f2f';
+            } else {
+                progText.textContent = `Done! ${allStudentData.length} students found (${withSemData} with semester results).`;
+                progText.style.color = '';
+            }
+            btn.disabled = false;
+            btn.innerHTML = '📊 Generate Report';
+
+            buildFacultyEditor();
+            buildReport();
+        }
+
+        function buildFacultyEditor() {
+            const subMap = new Map();
+            for (const st of allStudentData) {
+                if (!st.semData) continue;
+                for (const sub of st.semData.subjects) {
+                    const key = sub.code || sub.name;
+                    if (!subMap.has(key)) subMap.set(key, { code: sub.code, name: sub.name, faculty: '' });
+                }
+            }
+            subjectList = [...subMap.values()];
+
+            const saved = getSavedFaculty();
+            for (const sub of subjectList) {
+                const key = sub.code || sub.name;
+                if (saved[key]) sub.faculty = saved[key];
+            }
+
+            document.getElementById('facultyBody').innerHTML = subjectList.map((sub, i) => `
+                <tr>
+                    <td style="text-align:center;">${i + 1}</td>
+                    <td>${sub.name || sub.code}</td>
+                    <td>${sub.code}</td>
+                    <td><input type="text" value="${sub.faculty}" onchange="updateFaculty(${i}, this.value)" placeholder="Enter faculty name" /></td>
+                </tr>
+            `).join('');
+
+            document.getElementById('facultyEditor').style.display = 'block';
+        }
+
+        function updateFaculty(idx, value) {
+            subjectList[idx].faculty = value;
+            saveFacultyNames();
+        }
+
+        function getSavedFaculty() {
+            try { return JSON.parse(localStorage.getItem('ra_faculty') || '{}'); }
+            catch { return {}; }
+        }
+
+        function saveFacultyNames() {
+            const obj = {};
+            for (const sub of subjectList) obj[sub.code || sub.name] = sub.faculty;
+            try { localStorage.setItem('ra_faculty', JSON.stringify(obj)); } catch { }
+        }
+
+        function regenerateReport() {
+            saveFacultyNames();
+            buildReport();
+        }
+
+        function buildReport() {
+            const branch = document.getElementById('branchSelect').value;
+            const semKey = document.getElementById('semesterSelect').value;
+            const year = document.getElementById('batchYear').value.trim();
+            const dateInput = document.getElementById('reportDate').value;
+            const branchName = BRANCH_NAMES[branch] || 'CSE';
+
+            let dateStr = '';
+            if (dateInput) {
+                const d = new Date(dateInput);
+                dateStr = `${d.getDate().toString().padStart(2, '0')}.${(d.getMonth() + 1).toString().padStart(2, '0')}.${d.getFullYear()}`;
+            }
+
+            const sections = [...new Set(allStudentData.map(st => st.section))].sort();
+            const container = document.getElementById('reportContainer');
+            container.innerHTML = '';
+
+            for (const sec of sections) {
+                const secStudents = allStudentData.filter(st => st.section === sec);
+                const appeared = secStudents.filter(st => st.semData && st.semData.subjects.length > 0);
+                const allPassed = appeared.filter(st => st.semData.subjects.every(sub => !sub.failed));
+                const passPct = appeared.length > 0 ? ((allPassed.length / appeared.length) * 100).toFixed(2) : '0.00';
+
+                const secPassed = allPassed.sort((a, b) => a.roll.localeCompare(b.roll));
+                let passRows = '';
+                secPassed.forEach((st, i) => {
+                    passRows += `<tr><td>${i + 1}</td><td class="roll-col">${st.roll}</td><td>${st.name}</td></tr>`;
+                });
+                if (secPassed.length === 0) {
+                    passRows = `<tr><td colspan="3" style="text-align:center;color:#999;">No pass candidates</td></tr>`;
+                }
+
+                let subRows = '';
+                subjectList.forEach((sub, i) => {
+                    const key = sub.code || sub.name;
+                    let totalAppeared = 0, totalPassed = 0, absentees = 0;
+                    for (const st of appeared) {
+                        const match = st.semData.subjects.find(s => (s.code || s.name) === key);
+                        if (!match) continue;
+                        if (match.grade === 'Ab') { absentees++; continue; }
+                        totalAppeared++;
+                        if (!match.failed) totalPassed++;
+                    }
+                    const failed = totalAppeared - totalPassed;
+                    const pct = totalAppeared > 0 ? ((totalPassed / totalAppeared) * 100).toFixed(2) : '0.00';
+                    subRows += `<tr>
+                        <td>${i + 1}</td>
+                        <td>${(sub.name || sub.code).toUpperCase()}</td>
+                        <td>${(sub.faculty || '').toUpperCase()}</td>
+                        <td>${absentees}</td><td>${totalAppeared}</td><td>${totalPassed}</td><td>${failed}</td>
+                        <td class="pass-pct-cell">${pct}%</td>
+                    </tr>`;
+                });
+
+                const failedStudents = appeared.filter(st => st.semData.subjects.some(sub => sub.failed));
+                const failCountMap = {};
+                let maxFailSubs = 0;
+                for (const st of failedStudents) {
+                    const n = st.semData.subjects.filter(sub => sub.failed).length;
+                    failCountMap[n] = (failCountMap[n] || 0) + 1;
+                    if (n > maxFailSubs) maxFailSubs = n;
+                }
+                if (maxFailSubs === 0) maxFailSubs = subjectList.length || 5;
+
+                let failHeaders = '', failCells = '';
+                for (let i = 1; i <= maxFailSubs; i++) {
+                    failHeaders += `<th>${i}</th>`;
+                    failCells += `<td>${(failCountMap[i] || 0).toString().padStart(2, '0')}</td>`;
+                }
+
+                const page = document.createElement('div');
+                page.className = 'report-page';
+                page.style.display = 'block';
+                page.innerHTML = `
+                    <img src="image.png" class="college-header-img" />
+                    <div class="report-header">
+                        <h2>DEPARTMENT OF ${branchName}</h2>
+                        <h3>RESULT ANALYSIS OF ${SEM_LABELS[semKey]} (20${year}- BATCH)</h3>
+                        <div class="date-line">Date: ${dateStr}</div>
+                    </div>
+                    <div class="summary-stats">
+                        <b>Section: ${branchName}-${sec}</b><br>
+                        <b>TOTAL NO. OF STUDENTS APPEARED = ${appeared.length}</b><br>
+                        <b>NO. OF STUDENTS ALL SUB PASSED = ${allPassed.length}</b><br>
+                        <b>PASS % OF THE CLASS = ${passPct}%</b>
+                    </div>
+                    <div class="section-title">Pass Candidates:</div>
+                    <div class="pass-section-header">Section: ${branchName}-${sec}</div>
+                    <table class="pass-table">
+                        <thead><tr><th>S.No.</th><th>HT -NO.</th><th>STUDENT NAME</th></tr></thead>
+                        <tbody>${passRows}</tbody>
+                    </table>
+                    <div class="section-title" style="margin-top:28px;">SUBJECT -WISE PASS PERCENTAGE DETAILS</div>
+                    <table class="subject-table">
+                        <thead><tr>
+                            <th>S.<br>No.</th><th>NAME OF THE SUBJECT</th><th>NAME OF THE FACULTY</th><th>AB</th>
+                            <th>NO. OF<br>STUDENTS<br>APPEARED</th><th>NO. OF<br>STUDENTS<br>PASSED</th><th>NO. OF<br>FAILURES</th><th>PASS %</th>
+                        </tr></thead>
+                        <tbody>${subRows}</tbody>
+                    </table>
+                    <div class="section-title" style="margin-top:28px;">NO. OF FAILURE STUDENTS' DETAILS</div>
+                    <table class="failure-dist-table">
+                        <tr><th>NO. OF SUBJECTS</th>${failHeaders}</tr>
+                        <tr><th>NO. OF STUDENTS</th>${failCells}</tr>
+                    </table>
+                `;
+                container.appendChild(page);
+            }
+
+            document.getElementById('printBtn').style.display = '';
+            document.getElementById('wordBtn').style.display = '';
+            document.getElementById('excelBtn').style.display = '';
+        }
+
+        function imageToBase64(url) {
+            return new Promise((resolve, reject) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = function () {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = img.naturalWidth;
+                    canvas.height = img.naturalHeight;
+                    canvas.getContext('2d').drawImage(img, 0, 0);
+                    resolve(canvas.toDataURL('image/png'));
+                };
+                img.onerror = () => reject('Image load failed');
+                img.src = url;
+            });
+        }
+
+        async function exportToWord() {
+            const container = document.getElementById('reportContainer');
+            if (!container || container.children.length === 0) { alert('Generate the report first.'); return; }
+
+            let headerImgBase64 = '';
+            try { headerImgBase64 = await imageToBase64('image.png'); } catch (e) { console.warn('Header image not found for Word export'); }
+
+            const branch = document.getElementById('branchSelect').value;
+            const semKey = document.getElementById('semesterSelect').value;
+            const year = document.getElementById('batchYear').value.trim();
+            const branchName = BRANCH_NAMES[branch] || 'CSE';
+
+            // Re-generate report HTML with inline styles for Word compatibility
+            const sections = [...new Set(allStudentData.map(st => st.section))].sort();
+            let pagesHtml = '';
+
+            const S = {
+                passThBg: 'background:#fce4b2;', passThStyle: 'padding:3pt 6pt;font-weight:bold;text-align:center;font-size:10pt;background:#fce4b2;',
+                passTd: 'padding:3pt 6pt;font-size:10pt;',
+                passTdCenter: 'padding:3pt 6pt;font-size:10pt;text-align:center;width:35pt;',
+                passTdRoll: 'padding:3pt 6pt;font-size:10pt;font-weight:bold;',
+                subTh: 'padding:6pt 8pt;font-size:10pt;font-weight:bold;text-align:center;background:#4a90d9;color:#fff;',
+                subTd: 'padding:5pt 8pt;font-size:10pt;text-align:center;',
+                subTdLeft: 'padding:5pt 8pt;font-size:10pt;text-align:left;',
+                subTdBold: 'padding:5pt 8pt;font-size:10pt;text-align:center;font-weight:bold;',
+                failTh: 'padding:5pt 12pt;font-weight:bold;text-align:center;font-size:10pt;background:#fce4b2;',
+                failTd: 'padding:5pt 12pt;text-align:center;font-weight:bold;font-size:10pt;',
+            };
+
+            for (const sec of sections) {
+                const secStudents = allStudentData.filter(st => st.section === sec);
+                const appeared = secStudents.filter(st => st.semData && st.semData.subjects.length > 0);
+                const allPassed = appeared.filter(st => st.semData.subjects.every(sub => !sub.failed));
+                const passPct = appeared.length > 0 ? ((allPassed.length / appeared.length) * 100).toFixed(2) : '0.00';
+                const secPassed = allPassed.sort((a, b) => a.roll.localeCompare(b.roll));
+
+                let passRows = '';
+                secPassed.forEach((st, i) => {
+                    passRows += `<tr><td style="${S.passTdCenter}">${i + 1}</td><td style="${S.passTdRoll}">${st.roll}</td><td style="${S.passTd}">${st.name}</td></tr>`;
+                });
+                if (secPassed.length === 0) {
+                    passRows = `<tr><td colspan="3" style="${S.passTd}text-align:center;color:#999;">No pass candidates</td></tr>`;
+                }
+
+                let subRows = '';
+                subjectList.forEach((sub, i) => {
+                    const key = sub.code || sub.name;
+                    let totalAppeared = 0, totalPassed = 0, absentees = 0;
+                    for (const st of appeared) {
+                        const match = st.semData.subjects.find(s => (s.code || s.name) === key);
+                        if (!match) continue;
+                        if (match.grade === 'Ab') { absentees++; continue; }
+                        totalAppeared++;
+                        if (!match.failed) totalPassed++;
+                    }
+                    const failed = totalAppeared - totalPassed;
+                    const pct = totalAppeared > 0 ? ((totalPassed / totalAppeared) * 100).toFixed(2) : '0.00';
+                    const rowBg = i % 2 === 0 ? 'background:#e8f4fd;' : 'background:#fff;';
+                    subRows += `<tr>
+                        <td style="${S.subTd}${rowBg}">${i + 1}</td>
+                        <td style="${S.subTdLeft}${rowBg}">${(sub.name || sub.code).toUpperCase()}</td>
+                        <td style="${S.subTdLeft}${rowBg}">${(sub.faculty || '').toUpperCase()}</td>
+                        <td style="${S.subTd}${rowBg}">${absentees}</td>
+                        <td style="${S.subTd}${rowBg}">${totalAppeared}</td>
+                        <td style="${S.subTd}${rowBg}">${totalPassed}</td>
+                        <td style="${S.subTd}${rowBg}">${failed}</td>
+                        <td style="${S.subTdBold}${rowBg}">${pct}%</td>
+                    </tr>`;
+                });
+
+                const failedStudents = appeared.filter(st => st.semData.subjects.some(sub => sub.failed));
+                const failCountMap = {};
+                let maxFailSubs = 0;
+                for (const st of failedStudents) {
+                    const n = st.semData.subjects.filter(sub => sub.failed).length;
+                    failCountMap[n] = (failCountMap[n] || 0) + 1;
+                    if (n > maxFailSubs) maxFailSubs = n;
+                }
+                if (maxFailSubs === 0) maxFailSubs = subjectList.length || 5;
+
+                let failHeaders = '', failCells = '';
+                for (let i = 1; i <= maxFailSubs; i++) {
+                    failHeaders += `<th style="${S.failTh}">${i}</th>`;
+                    failCells += `<td style="${S.failTd}">${(failCountMap[i] || 0).toString().padStart(2, '0')}</td>`;
+                }
+
+                let dateStr = '';
+                const dateInput = document.getElementById('reportDate').value;
+                if (dateInput) {
+                    const d = new Date(dateInput);
+                    dateStr = `${d.getDate().toString().padStart(2, '0')}.${(d.getMonth() + 1).toString().padStart(2, '0')}.${d.getFullYear()}`;
+                }
+
+                const imgTag = headerImgBase64 ? `<img src="${headerImgBase64}" style="width:100%;max-height:90pt;display:block;margin:0 auto 8pt;" />` : '';
+
+                pagesHtml += `
+                <div style="page-break-after:always;">
+                    ${imgTag}
+                    <div style="text-align:center;margin-bottom:12pt;">
+                        <h2 style="font-size:14pt;text-decoration:underline;margin:0 0 2pt;">DEPARTMENT OF ${branchName}</h2>
+                        <h3 style="font-size:12pt;text-decoration:underline;margin:0 0 6pt;">RESULT ANALYSIS OF ${SEM_LABELS[semKey]} (20${year}- BATCH)</h3>
+                        <div style="text-align:right;font-size:11pt;margin-bottom:10pt;">Date: ${dateStr}</div>
+                    </div>
+                    <div style="font-size:11pt;margin-bottom:14pt;line-height:1.6;">
+                        <b>Section: ${branchName}-${sec}</b><br/>
+                        <b>TOTAL NO. OF STUDENTS APPEARED = ${appeared.length}</b><br/>
+                        <b>NO. OF STUDENTS ALL SUB PASSED = ${allPassed.length}</b><br/>
+                        <b>PASS % OF THE CLASS = ${passPct}%</b>
+                    </div>
+                    <p style="font-size:12pt;font-weight:bold;text-decoration:underline;margin:16pt 0 8pt;">Pass Candidates:</p>
+                    <div style="font-size:11pt;font-weight:bold;text-align:center;background:#fce4b2;padding:4pt;margin-bottom:4pt;">Section: ${branchName}-${sec}</div>
+                    <table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin-bottom:14pt;">
+                        <tr><th style="${S.passThStyle}">S.No.</th><th style="${S.passThStyle}">HT -NO.</th><th style="${S.passThStyle}">STUDENT NAME</th></tr>
+                        ${passRows}
+                    </table>
+                    <p style="font-size:12pt;font-weight:bold;text-decoration:underline;margin:16pt 0 8pt;">SUBJECT -WISE PASS PERCENTAGE DETAILS</p>
+                    <table cellpadding="0" cellspacing="0" style="width:100%;border-collapse:collapse;font-size:10pt;margin-bottom:14pt;">
+                        <tr>
+                            <th style="${S.subTh}">S.<br/>No.</th><th style="${S.subTh}">NAME OF THE SUBJECT</th><th style="${S.subTh}">NAME OF THE FACULTY</th><th style="${S.subTh}">AB</th>
+                            <th style="${S.subTh}">NO. OF<br/>STUDENTS<br/>APPEARED</th><th style="${S.subTh}">NO. OF<br/>STUDENTS<br/>PASSED</th><th style="${S.subTh}">NO. OF<br/>FAILURES</th><th style="${S.subTh}">PASS %</th>
+                        </tr>
+                        ${subRows}
+                    </table>
+                    <p style="font-size:12pt;font-weight:bold;text-decoration:underline;margin:16pt 0 8pt;">NO. OF FAILURE STUDENTS' DETAILS</p>
+                    <table cellpadding="0" cellspacing="0" style="border-collapse:collapse;font-size:10pt;margin-bottom:14pt;">
+                        <tr><th style="${S.failTh}">NO. OF SUBJECTS</th>${failHeaders}</tr>
+                        <tr><th style="${S.failTh}">NO. OF STUDENTS</th>${failCells}</tr>
+                    </table>
+                </div>`;
+            }
+
+            const wordHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office"
+xmlns:w="urn:schemas-microsoft-com:office:word"
+xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8">
+<style>
+@page { size:A4 portrait; margin:1in 0.8in; }
+body { font-family:'Times New Roman',Times,serif; font-size:12pt; color:#000; }
+</style></head>
+<body>${pagesHtml}</body></html>`;
+
+            const blob = new Blob(['\ufeff', wordHtml], { type: 'application/msword' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Result_Analysis_${branchName}_${SEM_LABELS[semKey].replace(/\s+/g, '_')}_20${year}.doc`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function exportToExcel() {
+            if (allStudentData.length === 0) { alert('Generate the report first.'); return; }
+
+            const branch = document.getElementById('branchSelect').value;
+            const semKey = document.getElementById('semesterSelect').value;
+            const year = document.getElementById('batchYear').value.trim();
+            const branchName = BRANCH_NAMES[branch] || 'CSE';
+
+            const sections = [...new Set(allStudentData.map(st => st.section))].sort();
+            let sheetsHtml = '';
+
+            for (const sec of sections) {
+                const secStudents = allStudentData.filter(st => st.section === sec);
+                const appeared = secStudents.filter(st => st.semData && st.semData.subjects.length > 0);
+                const allPassed = appeared.filter(st => st.semData.subjects.every(sub => !sub.failed));
+                const passPct = appeared.length > 0 ? ((allPassed.length / appeared.length) * 100).toFixed(2) : '0.00';
+                const secPassed = allPassed.sort((a, b) => a.roll.localeCompare(b.roll));
+
+                // Summary row
+                sheetsHtml += `<table><tr><td colspan="8" style="font-size:14pt;font-weight:bold;">DEPARTMENT OF ${branchName} - Section ${branchName}-${sec}</td></tr>
+                    <tr><td colspan="8">RESULT ANALYSIS OF ${SEM_LABELS[semKey]} (20${year}- BATCH)</td></tr>
+                    <tr><td colspan="3">Total Appeared</td><td>${appeared.length}</td><td colspan="2">All Sub Passed</td><td>${allPassed.length}</td><td>Pass %: ${passPct}%</td></tr>
+                </table><br/>`;
+
+                // Pass candidates
+                sheetsHtml += `<table border="1" cellpadding="4"><tr style="background:#fce4b2;font-weight:bold;"><td>S.No.</td><td>HT NO.</td><td>Student Name</td></tr>`;
+                if (secPassed.length > 0) {
+                    secPassed.forEach((st, i) => {
+                        sheetsHtml += `<tr><td>${i + 1}</td><td>${st.roll}</td><td>${st.name}</td></tr>`;
+                    });
+                } else {
+                    sheetsHtml += `<tr><td colspan="3">No pass candidates</td></tr>`;
+                }
+                sheetsHtml += `</table><br/>`;
+
+                // Subject-wise pass percentage
+                sheetsHtml += `<table border="1" cellpadding="4"><tr style="background:#4a90d9;color:#fff;font-weight:bold;">
+                    <td>S.No.</td><td>Subject Name</td><td>Faculty Name</td><td>AB</td>
+                    <td>Appeared</td><td>Passed</td><td>Failures</td><td>Pass %</td></tr>`;
+                subjectList.forEach((sub, i) => {
+                    const key = sub.code || sub.name;
+                    let totalAppeared = 0, totalPassed = 0, absentees = 0;
+                    for (const st of appeared) {
+                        const match = st.semData.subjects.find(s => (s.code || s.name) === key);
+                        if (!match) continue;
+                        if (match.grade === 'Ab') { absentees++; continue; }
+                        totalAppeared++;
+                        if (!match.failed) totalPassed++;
+                    }
+                    const failed = totalAppeared - totalPassed;
+                    const pct = totalAppeared > 0 ? ((totalPassed / totalAppeared) * 100).toFixed(2) : '0.00';
+                    const bg = i % 2 === 0 ? 'background:#e8f4fd;' : '';
+                    sheetsHtml += `<tr style="${bg}"><td>${i + 1}</td><td>${(sub.name || sub.code).toUpperCase()}</td><td>${(sub.faculty || '').toUpperCase()}</td><td>${absentees}</td><td>${totalAppeared}</td><td>${totalPassed}</td><td>${failed}</td><td>${pct}%</td></tr>`;
+                });
+                sheetsHtml += `</table><br/>`;
+
+                // Failure distribution
+                const failedStudents = appeared.filter(st => st.semData.subjects.some(sub => sub.failed));
+                const failCountMap = {};
+                let maxFailSubs = 0;
+                for (const st of failedStudents) {
+                    const n = st.semData.subjects.filter(sub => sub.failed).length;
+                    failCountMap[n] = (failCountMap[n] || 0) + 1;
+                    if (n > maxFailSubs) maxFailSubs = n;
+                }
+                if (maxFailSubs === 0) maxFailSubs = subjectList.length || 5;
+
+                sheetsHtml += `<table border="1" cellpadding="4"><tr style="background:#fce4b2;font-weight:bold;"><td>No. of Subjects</td>`;
+                for (let i = 1; i <= maxFailSubs; i++) sheetsHtml += `<td>${i}</td>`;
+                sheetsHtml += `</tr><tr style="font-weight:bold;"><td>No. of Students</td>`;
+                for (let i = 1; i <= maxFailSubs; i++) sheetsHtml += `<td>${failCountMap[i] || 0}</td>`;
+                sheetsHtml += `</tr></table><br/><br/>`;
+            }
+
+            const excelHtml = `<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+<head><meta charset="utf-8"><style>td,th{mso-number-format:"\@";}</style></head>
+<body>${sheetsHtml}</body></html>`;
+
+            const blob = new Blob(['\ufeff', excelHtml], { type: 'application/vnd.ms-excel' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `Result_Analysis_${branchName}_${SEM_LABELS[semKey].replace(/\s+/g, '_')}_20${year}.xls`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    </script>
+</body>
+
+</html>

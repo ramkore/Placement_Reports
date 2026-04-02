@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install:*)",
+      "Bash(node server.js)",
+      "Bash(curl -s http://localhost:3000/api/cache-stats)",
+      "Bash(curl -s \"http://localhost:3000/api/getAcademicResult?rollNumber=226F1A0502\")",
+      "Bash(curl -s -X POST http://localhost:3000/api/batch -H \"Content-Type: application/json\" -d '{\"\"\"\"rollNumbers\"\"\"\":[\"\"\"\"226F1A0502\"\"\"\",\"\"\"\"226F1A0503\"\"\"\",\"\"\"\"226F1A0504\"\"\"\"]}')",
+      "Bash(python -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\(f''''total: {d[\"\"total\"\"]}, fetched: {d[\"\"fetched\"\"]}''''\\); [print\\(f''''  {r}: {d[\"\"results\"\"][r][\"\"success\"\"]} - {d[\"\"results\"\"][r].get\\(\"\"data\"\",{}\\).get\\(\"\"details\"\",{}\\).get\\(\"\"name\"\",\"\"?\"\"\\)}''''\\) for r in d[''''results'''']]\")",
+      "Bash(curl -s -o /dev/null -w \"Time: %{time_total}s, X-Cache: \" \"http://localhost:3000/api/getAcademicResult?rollNumber=226F1A0502\")",
+      "Bash(curl -s -I \"http://localhost:3000/api/getAcademicResult?rollNumber=226F1A0502\")",
+      "Bash(taskkill /F /IM node.exe)",
+      "Bash(taskkill //F //IM node.exe)",
+      "Bash(curl -s \"https://jntuhresults.dhethi.com/api/getAcademicResult?rollNumber=246F1A0501\")",
+      "Bash(curl -s \"https://jntuhresults.dhethi.com/api/getAcademicResult?rollNumber=226F1A0502\")",
+      "Bash(node -e \"require\\('fs'\\).readFileSync\\('d:/1.Projects/Result Analysis/RA 1/Backlog_Report.html', 'utf8'\\)\")",
+      "Read(//d/1. Projects/Result Analysis/**)",
+      "Bash(dir \"D:\\\\1.Projects\\\\Result Analysis\\\\RA 1\\\\\")"
+    ]
+  }
+}
