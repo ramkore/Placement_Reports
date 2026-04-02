@@ -1007,7 +1007,6 @@
 
                     // Total backlogs count (only up to selected semester)
                     // LE students join from Sem 3 — Sems 1 & 2 are not applicable for them
-                    const leMinSem = st.lateral ? 3 : 1;
                     let totalBacklogs = 0;
                     let hasMissingSem = false;
                     for (let sem = leMinSem; sem <= maxSem; sem++) {
