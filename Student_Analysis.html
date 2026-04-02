@@ -229,7 +229,7 @@
 
             allStudentData = [];
             const semNum = SEM_KEY_TO_NUM[semKey];
-            const BATCH_SIZE = 5;
+            const BATCH_SIZE = 20;
             let fetched = 0;
 
             for (let i = 0; i < allRolls.length; i += BATCH_SIZE) {
@@ -237,7 +237,7 @@
 
                 const promises = batch.map(async (roll) => {
                     const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 15000);
+                    const timeoutId = setTimeout(() => controller.abort(), 8000);
                     try {
                         let name = '';
                         let semData = null;
@@ -340,7 +340,7 @@
                 progBar.style.width = pct + '%';
                 progText.textContent = `Fetched ${fetched} / ${allRolls.length} roll numbers...`;
 
-                if (i + BATCH_SIZE < allRolls.length) await new Promise(r => setTimeout(r, 150));
+
             }
 
             progBar.style.width = '100%';

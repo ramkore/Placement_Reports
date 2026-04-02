@@ -1130,22 +1130,19 @@
 
             const total = currentStudents.length;
             let completed = 0;
-            let hasError = false;
             
             progressBar.style.width = '0%';
             progressText.style.color = '';
             progressText.textContent = `Processing 0 of ${total} roll numbers (0%)...`;
 
-            const BATCH_SIZE = 5; // strictly limited to 5 to avoid browser connection blocking/hanging
+            const BATCH_SIZE = 20;
 
             for (let i = 0; i < total; i += BATCH_SIZE) {
                 const batch = currentStudents.slice(i, i + BATCH_SIZE);
-                let batchErrors = 0;
-                let batchTimeouts = 0;
 
                 const promises = batch.map(async (st) => {
                     const controller = new AbortController();
-                    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout to prevent infinite hangs
+                    const timeoutId = setTimeout(() => controller.abort(), 8000);
                     try {
                         let gotSemData = false;
 
@@ -1276,8 +1273,6 @@
                         if (st.name === "Fetching...") st.name = "Not Found";
                     } catch (e) {
                         clearTimeout(timeoutId);
-                        batchErrors++;
-                        if (e.name === 'AbortError') batchTimeouts++;
                         if (st.name === "Fetching...") st.name = "Not Found";
                     } finally {
                         completed++;
@@ -1290,23 +1285,7 @@
                 });
 
                 await Promise.all(promises);
-                renderTable(); // Update UI table dynamically on every batch
-                
-                if (batchTimeouts > 0) {
-                    alert("Error: The server took too long to respond (>15s). Fetch process has been aborted due to timeout.");
-                    progressText.textContent = "Fetch aborted due to server timeout. Please try again later.";
-                    progressText.style.color = "red";
-                    hasError = true;
-                    break;
-                } else if (batchErrors === batch.length) {
-                    alert("Error: The server is not responding (Network failure). Fetch process has been aborted.");
-                    progressText.textContent = "Fetch aborted due to network error.";
-                    progressText.style.color = "red";
-                    hasError = true;
-                    break;
-                }
-
-                if (i + BATCH_SIZE < total) await new Promise(r => setTimeout(r, 150));
+                renderTable();
             }
 
             // Filter out invalid generated roll numbers
@@ -1315,9 +1294,8 @@
 
             fetchBtn.innerHTML = '🚀 Fetch Data';
             fetchBtn.disabled = false;
-            
-            if (!hasError) {
-                progressText.textContent = `Completed! ${currentStudents.length} valid students fetched.`;
+            progressText.textContent = `Completed! ${currentStudents.length} valid students fetched.`;
+            if (false) {
             }
             document.getElementById('exportBtn').disabled = false;
             document.getElementById('wordBtn').disabled = false;
