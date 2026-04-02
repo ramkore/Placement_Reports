@@ -1006,14 +1006,17 @@
 
                     // Total backlogs count (only up to selected semester)
                     let totalBacklogs = 0;
+                    let hasMissingSem = false;
                     for (let sem = 1; sem <= maxSem; sem++) {
+                        if (!activeSems.includes(sem)) continue;
                         const b = st.sem[sem]?.b;
-                        if (b && b !== '0') {
-                            totalBacklogs += b.split(',').length;
-                        }
+                        if (!b) { hasMissingSem = true; }
+                        else if (b !== '0') { totalBacklogs += b.split(',').length; }
                     }
                     if (totalBacklogs > 0) {
-                        html += `<td style="text-align:center;font-weight:800;font-size:13px;color:#c62828;background:#ffebee;">${totalBacklogs}</td>`;
+                        html += `<td style="text-align:center;font-weight:800;font-size:13px;color:#c62828;background:#ffebee;">${totalBacklogs}${hasMissingSem ? '+?' : ''}</td>`;
+                    } else if (hasMissingSem) {
+                        html += `<td style="text-align:center;font-weight:700;font-size:12px;color:#e65100;background:#fff3e0;">No Data</td>`;
                     } else {
                         html += `<td style="text-align:center;font-weight:700;font-size:12px;color:#2e7d32;background:#e8f5e9;">✅ 0</td>`;
                     }
